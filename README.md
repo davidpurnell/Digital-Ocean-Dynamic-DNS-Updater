@@ -1,3 +1,8 @@
+I've decided to mark this reposotory as inactive as I simply don't have the skills, time or inclination to maintain the Python script. The PHP is manageable, but that doesn't seem to be what the people want.
+
+For now I'm going to mark this repo as archived; if anyone wants to take it over please get in touch.
+
+
 Digital Ocean Dynamic DNS-Updater
 =================================
 
@@ -68,4 +73,4 @@ This mode is perfect if you want to run inside a Docker container, where there i
 
 Thanks to:
 ----------
-@surfer190, @nickwest, @gnoeley, @ryanwcraig, @c17r for adding additional features, testing code and feedback.
+@surfer190, @nickwest, @gnoeley, @ryanwcraig, @c17r, @larroy for adding additional features, testing code and feedback.
