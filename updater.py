@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/local/bin/python3
 # Original Script by Michael Shepanski (2013-08-01, python 2)
 # Updated to work with Python 3
 # Updated to use DigitalOcean API v2
@@ -66,13 +66,12 @@ def get_external_ip(expected_rtype):
     external_ip = get_url(CHECKIP_URL).rstrip()
     ip = ipaddress.ip_address(external_ip)
     if (ip.version == 4 and expected_rtype != 'A') or (ip.version == 6 and expected_rtype != 'AAAA'):
-        raise Exception("Expected Rtype {} but got {}".format(expected_rtype, external_ip))
-    debug("Obtaining the current external IP address: {}", external_ip)
+        raise Exception('Expected Rtype {} but got {}'.format(expected_rtype, external_ip))
     return external_ip
 
 
 def get_domain(name, token):
-    debug("Fetching Domain ID for: {}", name)
+    output('Fetching Domain ID for: {}', name)
     url = "%s/domains" % (APIURL)
 
     while True:
@@ -90,11 +89,11 @@ def get_domain(name, token):
         else:
             break
 
-    raise Exception(f"Could not find domain: {name}")
+    raise Exception("Could not find domain: %s" % name)
 
 
 def get_record(domain, name, rtype, token):
-    debug("Fetching Record ID for: {}", name)
+    output("Fetching Record ID for: {}", name)
     url = "%s/domains/%s/records" % (APIURL, domain['name'])
 
     while True:
@@ -112,11 +111,11 @@ def get_record(domain, name, rtype, token):
         else:
             break
 
-    raise Exception(f"Could not find record: {name}")
+    raise Exception("Could not find record: %s" % name)
 
 
 def set_record_ip(domain, record, ipaddr, token):
-    debug("Updating record {}.{} to {}", record['name'], domain['name'], ipaddr)
+    print("Updating record {}.{} to {}".format(record['name'], domain['name'], ipaddr))
 
     url = "%s/domains/%s/records/%s" % (APIURL, domain['name'], record['id'])
     data = json.dumps({'data': ipaddr}).encode('utf-8')
@@ -124,52 +123,39 @@ def set_record_ip(domain, record, ipaddr, token):
 
     result = json.loads(put_url(url, data, headers))
     if result['domain_record']['data'] == ipaddr:
-        debug("Record {}.{} sucessfully updated to {}", record['name'], domain['name'], ipaddr)
-    else:
-        raise Exception(f"Could not set {record['name']}.{domain['name']} to {ipaddr}")
+        print("Success")
 
 
 def output(line, *args):
-    quiet = getattr(output, 'quiet', False)
-    if quiet:
+    check = getattr(output, 'suppress', False)
+    if check:
         return
-    print(f"[{datetime.now()}]", line.format(*args))
+    print(line.format(*args))
 
-
-def debug(line, *args):
-    debugEnable = getattr(debug, 'debug', False)
-    if not debugEnable:
-        return
-    output(f"DEBUG - {line}", *args)
 
 def process_args():
-    parser = argparse.ArgumentParser(description='Updates DNS records in Digital Ocean')
+    parser = argparse.ArgumentParser()
     parser.add_argument("token")
     parser.add_argument("domain")
     parser.add_argument("record")
     parser.add_argument("rtype", choices=['A', 'AAAA'])
-    parser.add_argument("-q", "--quiet",
-                        action="store_true",
-                        help="Only display output on IP change")
-    parser.add_argument("-d", "--debug",
-                        action="store_true",
-                        help="Shows debug messages")
-    parser.add_argument("-ecoc", "--error-code-on-change",
-                        action="store_true",
-                        help="Return Error Code 1 on IP change")
-    parser.add_argument("-re", "--run-every",
-                        help="Run every number of seconds")
+    parser.add_argument("-q", "--quiet", action="store_true", help='Only display output on IP change')
+    parser.add_argument("-ecoc", "--error-code-on-change", action="store_true", help='return Error Code 1 on IP change')
     return parser.parse_args()
 
 
-def run(args):
+def run():
     try:
-        debug("Update {}.{} record type {}", args.record, args.domain, args.rtype)
+        args = process_args()
+        if args.quiet:
+            output.suppress = True
+
+        output("Update {}.{}: {}", args.record, args.domain, datetime.now())
         ipaddr = get_external_ip(args.rtype)
         domain = get_domain(args.domain, args.token)
         record = get_record(domain, args.record, args.rtype, args.token)
         if record['data'] == ipaddr:
-            output("Record {}.{} already set to {}", record['name'], domain['name'], ipaddr)
+            output("Records {}.{} already set to {}.", record['name'], domain['name'], ipaddr)
             return 0
 
         set_record_ip(domain, record, ipaddr, args.token)
@@ -177,24 +163,9 @@ def run(args):
         return ec
 
     except (Exception) as err:
-        print(f"[{datetime.now()}] ERROR - {err}", file=sys.stderr)
+        print("Error: ", err, file=sys.stderr)
         return -1
 
 
 if __name__ == '__main__':
-    args = process_args()
-    if args.debug:
-        debug.debug = True
-
-    if args.quiet:
-        output.quiet = True
-
-    if args.run_every:
-        timeout = int(args.run_every)
-        output("Running this script continuously every {} seconds", timeout)
-        starttime=time.time()
-        while True:
-          run(args)
-          time.sleep(timeout - ((time.time() - starttime) % timeout))
-    else:
-        sys.exit(run(args))
+    sys.exit(run())
